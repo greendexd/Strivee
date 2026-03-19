@@ -97,9 +97,9 @@ export default function Home() {
           <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <div className="flex justify-between items-center relative z-10">
             <div className="text-left">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-primary-fixed-variant">Current Mission</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-primary-fixed-variant">Current Mission 🎯</span>
               <h3 className="text-xl font-headline font-extrabold text-on-primary-fixed mt-1">Slayer of the Blue Screen</h3>
-              <p className="text-sm text-on-primary-fixed-variant/80 font-medium mt-1">No phone 30 mins before bed</p>
+              <p className="text-sm text-on-primary-fixed-variant/80 font-medium mt-1">No phone 30 mins before bed (Good luck!)</p>
             </div>
             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
               <span className="material-symbols-outlined text-on-primary-fixed text-2xl">arrow_forward_ios</span>
