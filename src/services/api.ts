@@ -4,7 +4,7 @@ import axios from 'axios';
 export const CURRENT_USER_ID = '11111111-1111-1111-1111-111111111111';
 
 // We run backend locally on port 3001
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
