@@ -1,58 +1,122 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
-import { InventoryService, CURRENT_USER_ID } from '../services/api';
+import { ShopService } from '../services/api';
+import type { ShopItem } from '../services/api';
 
 export default function Shop() {
-  const { user, refreshUser } = useUser();
+  const { user, showToast, refreshUser } = useUser();
+  const [catalog, setCatalog] = useState<ShopItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'skin' | 'utility'>('all');
+  const [unlockedItem, setUnlockedItem] = useState<{name: string, rarity: string, image?: string} | null>(null);
 
-  const handlePurchase = async (itemName: string, type: string, rarity: string) => {
+  useEffect(() => {
+    const fetchCatalog = async () => {
+      try {
+         const items = await ShopService.getCatalog();
+         setCatalog(items);
+      } catch (err: any) {
+         showToast('Failed to load shop items', 'error');
+      } finally {
+         setLoading(false);
+      }
+    };
+    fetchCatalog();
+  }, [showToast]);
+
+  const handlePurchase = async (shopItem: ShopItem) => {
+    if (!user) return;
+
+    // Check balance
+    if (shopItem.priceGold > 0 && user.gold < shopItem.priceGold) {
+       showToast('Not enough Gold!', 'error');
+       return;
+    }
+    if (shopItem.priceGems > 0 && user.gems < shopItem.priceGems) {
+       showToast('Not enough Gems!', 'error');
+       return;
+    }
+
+    setPurchasing(true);
     try {
-      setPurchasing(true);
-      await InventoryService.createItem({
-        name: itemName,
-        type,
-        rarity,
-        userId: CURRENT_USER_ID
+      const result = await ShopService.buyItem(user.id, shopItem.id);
+      await refreshUser(); // Update balance and inventory
+      setUnlockedItem({
+         name: result.item.name,
+         rarity: result.item.rarity,
+         image: shopItem.imageUrl
       });
-      alert(`Successfully purchased ${itemName}!`);
-      await refreshUser();
-    } catch (error) {
-      console.error('Failed to purchase item:', error);
-      alert('Failed to complete purchase. Please try again.');
+      showToast(result.message, 'success');
+    } catch (err: any) {
+      showToast(((err as any).response)?.data?.error || 'Purchase failed', 'error');
     } finally {
       setPurchasing(false);
     }
   };
 
+  const filteredInventory = user?.inventory?.filter(item => {
+     if (activeFilter === 'all') return true;
+     return item.type === activeFilter;
+  }) || [];
+
+  if (loading) {
+     return <div className="h-[calc(100vh-144px)] flex items-center justify-center text-on-surface-variant animate-pulse">Loading Shop...</div>;
+  }
+
   return (
-    <main className="max-w-5xl mx-auto px-6 pt-8 space-y-10 pb-32">
-      {/* Battle Pass Banner */}
-      <section className="relative group cursor-pointer">
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-dim to-secondary-dim rounded-lg blur opacity-30 group-hover:opacity-50 transition duration-300"></div>
-        <div className="relative bg-surface-container-high p-6 rounded-lg overflow-hidden">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-primary/10 rounded-full blur-3xl"></div>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="bg-primary/20 text-primary text-[10px] px-2 py-0.5 rounded-full font-bold tracking-widest uppercase">Season 4</span>
-                <h2 className="font-headline text-xl font-extrabold">Ethereal Battle Pass</h2>
-              </div>
-              <p className="text-on-surface-variant text-sm">Level {user?.level || 1} • {user?.xp || 0} / 1000 XP to next tier</p>
+    <main className="px-6 py-6 pb-32 max-w-2xl mx-auto space-y-10 relative">
+
+      {/* Top Bar for Resources */}
+      <div className="flex justify-end items-center w-full gap-2">
+         <div className="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/20">
+            <span className="material-symbols-outlined text-yellow-500 text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>monetization_on</span>
+            <span className="font-bold text-xs">{user?.gold || 0}</span>
+         </div>
+         <div className="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/20">
+            <span className="material-symbols-outlined text-[#ca98ff] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
+            <span className="font-bold text-xs">{user?.gems || 0}</span>
+         </div>
+      </div>
+
+      <header>
+        <h1 className="font-headline font-black text-4xl tracking-tighter text-on-surface mb-2">Mystic Bazaar</h1>
+        <p className="text-on-surface-variant text-sm font-medium">Trade your hard-earned wealth for power.</p>
+      </header>
+
+      {/* Unlocked Item Modal */}
+      {unlockedItem && (
+         <div className="fixed inset-0 bg-background/95 z-50 flex flex-col items-center justify-center backdrop-blur-md px-6">
+            <div className={`w-40 h-40 rounded-full flex items-center justify-center mb-8 relative ${
+               unlockedItem.rarity === 'legendary' ? 'bg-tertiary/20' :
+               unlockedItem.rarity === 'rare' ? 'bg-primary/20' : 'bg-surface-container-highest'
+            }`}>
+               <div className="absolute inset-0 animate-spin-slow opacity-50 bg-[conic-gradient(from_0deg,transparent_0_340deg,white_360deg)] rounded-full"></div>
+               {unlockedItem.image ? (
+                  <img src={unlockedItem.image} alt="Loot" className="w-24 h-24 object-contain relative z-10 drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] animate-pulse" />
+               ) : (
+                  <span className={`material-symbols-outlined text-6xl relative z-10 ${
+                     unlockedItem.rarity === 'legendary' ? 'text-tertiary drop-shadow-[0_0_15px_#ffe792]' :
+                     unlockedItem.rarity === 'rare' ? 'text-primary drop-shadow-[0_0_15px_#ca98ff]' : 'text-on-surface'
+                  }`} style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+               )}
             </div>
 
-            <div className="flex-1 max-w-md w-full">
-              <div className="h-3 w-full bg-surface-container-lowest rounded-full overflow-hidden">
-                <div className="h-full w-[85%] bg-gradient-to-r from-primary to-secondary relative shadow-[0_0_12px_rgba(47,248,1,0.4)]"></div>
-              </div>
-              <div className="flex justify-between mt-2">
-                <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter">Current: Shadow Cape</span>
-                <span className="text-[10px] font-bold text-tertiary uppercase tracking-tighter">Next: Phoenix Wings</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+            <p className="text-sm font-bold tracking-[0.3em] uppercase mb-2 text-on-surface-variant">ITEM UNLOCKED</p>
+            <h2 className={`text-3xl font-black font-headline text-center mb-12 ${
+               unlockedItem.rarity === 'legendary' ? 'text-tertiary' :
+               unlockedItem.rarity === 'rare' ? 'text-primary' : 'text-on-surface'
+            }`}>
+               {unlockedItem.name}
+            </h2>
+
+            <button
+               onClick={() => setUnlockedItem(null)}
+               className="w-full max-w-xs bg-surface-container-highest py-4 rounded-xl font-black tracking-widest active:scale-95 transition-transform hover:bg-surface-container">
+               EQUIP LATER
+            </button>
+         </div>
+      )}
 
       {/* Featured Loot Boxes */}
       <section className="space-y-6">
@@ -61,113 +125,122 @@ export default function Shop() {
             <h3 className="font-headline text-2xl font-black tracking-tight">Featured Items</h3>
             <p className="text-on-surface-variant text-sm font-medium">Unlock potential with mysterious relics</p>
           </div>
-          <div className="flex items-center gap-2 bg-surface-container-highest px-3 py-1.5 rounded-xl">
-            <span className="material-symbols-outlined text-primary text-sm">token</span>
-            <span className="text-sm font-bold">2 Loot Shards</span>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Common Box */}
-          <div className="bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center group hover:translate-y-[-4px] transition-all duration-300 border border-outline-variant/10">
-            <div className="w-32 h-32 mb-6 relative">
-              <div className="absolute inset-0 bg-on-surface-variant/5 rounded-full blur-2xl"></div>
-              <img
-                alt="Common Loot Box"
-                className="w-full h-full relative z-10 opacity-80 group-hover:scale-110 transition-transform"
-                data-alt="Sleek silver metallic gift box"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKnPYrwbhv14tZei1FsxYKfcgTDXgdlmCg-ygujWyE2SgHg1aSgO0PO4r_AcDQLut17yTJK48EIMz6fxg3BwxLM5JGveSjLKXVakD2eCbSeOClp-kcgMtSYaSAcCQ2aIS_4wqk7xVQH4Cks2SG1Md8j-2yti0xFfAxs_XEs3ERoRR6OoQJ7EvqBe9FF8VVwADH5QxL8hSVIFDq2mxWRo1mfS5O7Z_ZthbU8Nid5AxJha63IHJOlN56GF4YoUoYMGQyv9PYbmA9zG8"
-              />
-            </div>
-            <h4 className="font-headline font-extrabold text-lg mb-1">Seeker's Crate</h4>
-            <p className="text-xs text-on-surface-variant mb-6 uppercase tracking-widest font-bold">Common Tier</p>
-            <button
-              disabled={purchasing}
-              onClick={() => handlePurchase("Seeker's Crate", "lootbox", "common")}
-              className="w-full py-3 bg-surface-container-highest text-on-surface rounded-full font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-surface-container-highest/80">
-              <span className="material-symbols-outlined text-sm">payments</span>
-              2,500 Gold
-            </button>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {catalog.map(item => (
+            <div key={item.id} className={`bg-surface-container-low p-6 rounded-xl flex flex-col items-center text-center group hover:translate-y-[-4px] transition-all duration-300 border relative overflow-hidden ${
+               item.rarity === 'rare' ? 'border-primary/30 shadow-[0_4px_30px_rgba(202,152,255,0.1)]' :
+               item.rarity === 'legendary' ? 'border-tertiary/30 shadow-[0_4px_30px_rgba(255,231,146,0.1)]' :
+               'border-outline-variant/10'
+            }`}>
+              {item.rarity === 'rare' && <div className="absolute top-0 left-0 w-full h-1 bg-primary"></div>}
+              {item.rarity === 'legendary' && <div className="absolute top-0 left-0 w-full h-1 bg-tertiary"></div>}
 
-          {/* Rare Box */}
-          <div className="bg-surface-container-high p-6 rounded-xl flex flex-col items-center text-center group hover:translate-y-[-4px] transition-all duration-300 rarity-rare relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-primary"></div>
-            <div className="w-32 h-32 mb-6 relative">
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse"></div>
-              <img
-                alt="Rare Loot Box"
-                className="w-full h-full relative z-10 group-hover:scale-110 transition-transform"
-                data-alt="Glowing purple crystal chest with arcane markings"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0Ac3TBDyUjUIw-TY5a9tRDgD7f8p6F6NtPOihqkZRdutRaCj88OBINSMC9nDWTxPWPp84p0nWTcmK-j6I2DPLkxz1aBydEn6BOttOjCdfVQFvGYDirA1h_x0xxYTVgvY9K-CiabqiAQsfm6wHGHo9s8_sxM-aUm4dDGc5gl1e0AHTjTu_wvzAvE_Agqh6oXGeL9ekW48-Mr8jnUoIDkAu_gD6kekhXgyjP88L9eam5wHhJ_lb7RQuFbiGc3iseTCIfl-a1vUd4Zg"
-              />
-            </div>
-            <h4 className="font-headline font-extrabold text-lg mb-1 text-primary">Astral Vault</h4>
-            <p className="text-xs text-primary/70 mb-6 uppercase tracking-widest font-bold">Rare Tier</p>
-            <button
-              disabled={purchasing}
-              onClick={() => handlePurchase("Astral Vault", "lootbox", "rare")}
-              className="w-full py-3 bg-gradient-to-br from-[#ca98ff] to-[#9c42f4] text-white rounded-full font-bold text-sm active:scale-95 transition-transform shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:opacity-90">
-              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
-              150 Gems
-            </button>
-          </div>
+              <div className="w-32 h-32 mb-6 relative">
+                <div className={`absolute inset-0 rounded-full blur-2xl opacity-50 ${
+                   item.rarity === 'rare' ? 'bg-primary/40 animate-pulse' :
+                   item.rarity === 'legendary' ? 'bg-tertiary/40 animate-pulse' : 'bg-surface-container-highest'
+                }`}></div>
+                {item.imageUrl ? (
+                   <img alt={item.name} src={item.imageUrl} className="w-full h-full object-contain relative z-10 group-hover:scale-110 transition-transform" />
+                ) : (
+                   <div className="w-full h-full flex items-center justify-center relative z-10 group-hover:scale-110 transition-transform">
+                      <span className={`material-symbols-outlined text-6xl ${
+                         item.rarity === 'rare' ? 'text-primary' :
+                         item.rarity === 'legendary' ? 'text-tertiary' : 'text-on-surface-variant'
+                      }`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                         {item.type === 'lootbox' ? 'inventory_2' : item.type === 'skin' ? 'checkroom' : 'ac_unit'}
+                      </span>
+                   </div>
+                )}
+              </div>
+              <h4 className={`font-headline font-extrabold text-lg mb-1 ${
+                 item.rarity === 'rare' ? 'text-primary' :
+                 item.rarity === 'legendary' ? 'text-tertiary' : 'text-on-surface'
+              }`}>{item.name}</h4>
+              <p className="text-xs text-on-surface-variant/80 mb-6 uppercase tracking-widest font-bold">{item.description}</p>
 
-          {/* Legendary Box */}
-          <div className="bg-surface-container-high p-6 rounded-xl flex flex-col items-center text-center group hover:translate-y-[-4px] transition-all duration-300 rarity-legendary relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-tertiary"></div>
-            <div className="w-32 h-32 mb-6 relative">
-              <div className="absolute inset-0 bg-tertiary/20 rounded-full blur-2xl animate-pulse"></div>
-              <div className="absolute inset-0 shimmer-effect opacity-30"></div>
-              <img
-                alt="Legendary Loot Box"
-                className="w-full h-full relative z-10 group-hover:scale-110 transition-transform"
-                data-alt="Opulent gold and white cosmic treasure chest"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeq9rDGdi9ayilj9_gpXw09xQ9QfvSzBy3S_u37jA21KO-hEKg6lnUJTq2HvVk9Tuv53e4iuAdFrEq3-jnKPkD2_tpFxb7dhl7nkF5UHX0FBZ8-ghIcyeLcdwCg0EcMVyumXoUlpmWfn72T71qleleKMDK4FDl7G7kKJIF8M38OX0BkMRS1C_oEqlii-OlYVWfK9el9kjevwydpAli-xVZnXMg97kvx8TPsxr45av4CclEr4q9J51-kJ2jthLko_ro6F4fUKRpCec"
-              />
+              <button
+                disabled={purchasing}
+                onClick={() => handlePurchase(item)}
+                className={`w-full py-3 rounded-full font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 ${
+                   item.priceGems > 0
+                     ? 'bg-gradient-to-br from-[#ca98ff] to-[#9c42f4] text-white shadow-primary/20 hover:opacity-90'
+                     : 'bg-surface-container-highest text-yellow-500 hover:bg-surface-container border border-outline-variant/20'
+                }`}>
+                {item.priceGems > 0 ? (
+                   <><span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>{item.priceGems} Gems</>
+                ) : (
+                   <><span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>monetization_on</span>{item.priceGold} Gold</>
+                )}
+              </button>
             </div>
-            <h4 className="font-headline font-extrabold text-lg mb-1 text-tertiary">Celestial Coffer</h4>
-            <p className="text-xs text-tertiary/70 mb-6 uppercase tracking-widest font-bold">Legendary Tier</p>
-            <button
-              disabled={purchasing}
-              onClick={() => handlePurchase("Celestial Coffer", "lootbox", "legendary")}
-              className="w-full py-3 bg-gradient-to-br from-tertiary to-tertiary-dim text-on-tertiary-fixed rounded-full font-bold text-sm active:scale-95 transition-transform shadow-lg shadow-tertiary/20 flex items-center justify-center gap-2 hover:opacity-90">
-              <span className="material-symbols-outlined text-sm">token</span>
-              1 Loot Shard
-            </button>
-          </div>
+          ))}
         </div>
       </section>
 
       {/* My Inventory */}
-      <section className="space-y-6">
+      <section className="space-y-6 pt-4 border-t border-outline-variant/10">
         <div className="flex items-center justify-between">
           <h3 className="font-headline text-2xl font-black tracking-tight">My Inventory</h3>
           <div className="flex gap-2">
-            <button className="px-4 py-2 bg-primary/10 text-primary rounded-full text-xs font-bold uppercase tracking-widest">All</button>
-            <button className="px-4 py-2 bg-surface-container-low text-on-surface-variant rounded-full text-xs font-bold uppercase tracking-widest">Skins</button>
-            <button className="px-4 py-2 bg-surface-container-low text-on-surface-variant rounded-full text-xs font-bold uppercase tracking-widest">Utility</button>
+            <button
+               onClick={() => setActiveFilter('all')}
+               className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
+                  activeFilter === 'all' ? 'bg-primary text-background shadow-[0_0_15px_rgba(202,152,255,0.4)]' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+               }`}>All</button>
+            <button
+               onClick={() => setActiveFilter('skin')}
+               className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
+                  activeFilter === 'skin' ? 'bg-primary text-background shadow-[0_0_15px_rgba(202,152,255,0.4)]' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+               }`}>Skins</button>
+            <button
+               onClick={() => setActiveFilter('utility')}
+               className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
+                  activeFilter === 'utility' ? 'bg-primary text-background shadow-[0_0_15px_rgba(202,152,255,0.4)]' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+               }`}>Utility</button>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {user?.inventory?.length === 0 ? (
-            <div className="col-span-full py-8 text-center text-on-surface-variant">Your inventory is empty. Buy something from the shop!</div>
+          {filteredInventory.length === 0 ? (
+            <div className="col-span-full py-12 flex flex-col items-center justify-center gap-4 bg-surface-container-lowest rounded-xl border-2 border-dashed border-outline-variant/20">
+               <span className="material-symbols-outlined text-4xl text-on-surface-variant">inventory_2</span>
+               <p className="text-on-surface-variant font-medium">No items found in this category.</p>
+            </div>
           ) : (
-            user?.inventory?.map((item) => (
-              <div key={item.id} className={`aspect-square bg-surface-container p-4 rounded-xl border relative group hover:bg-surface-container-high transition-colors ${item.rarity === 'legendary' ? 'border-tertiary/20' : item.rarity === 'rare' ? 'border-primary/20' : 'border-outline-variant/10'}`}>
+            filteredInventory.map((item) => (
+              <div key={item.id} className={`aspect-square bg-surface-container p-4 rounded-xl border relative group hover:bg-surface-container-high transition-colors ${
+                 item.rarity === 'legendary' ? 'border-tertiary/30' :
+                 item.rarity === 'rare' ? 'border-primary/30' :
+                 'border-outline-variant/10'
+              }`}>
+                {item.equipped && (
+                   <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_#2ff801] z-20"></div>
+                )}
                 <div className="h-full flex flex-col items-center justify-center gap-2">
                   <div className="relative">
-                    {item.rarity === 'legendary' && <div className="absolute inset-0 bg-tertiary/10 blur-xl rounded-full"></div>}
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center relative z-10 ${item.rarity === 'legendary' ? 'bg-tertiary/20 text-tertiary' : item.rarity === 'rare' ? 'bg-primary/20 text-primary' : 'bg-secondary/10 text-secondary'}`}>
-                      <span className="material-symbols-outlined text-3xl">
+                    {item.rarity === 'legendary' && <div className="absolute inset-0 bg-tertiary/20 blur-xl rounded-full"></div>}
+                    {item.rarity === 'rare' && <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full"></div>}
+
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center relative z-10 border ${
+                       item.rarity === 'legendary' ? 'bg-tertiary/10 text-tertiary border-tertiary/50' :
+                       item.rarity === 'rare' ? 'bg-primary/10 text-primary border-primary/50' :
+                       'bg-surface-container-lowest text-on-surface-variant border-outline-variant/20'
+                    }`}>
+                      <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
                         {item.type === 'lootbox' ? 'inventory_2' : item.type === 'skin' ? 'checkroom' : 'ac_unit'}
                       </span>
                     </div>
                   </div>
                   <div className="text-center">
-                    <p className={`text-xs font-bold ${item.rarity === 'legendary' ? 'text-tertiary' : item.rarity === 'rare' ? 'text-primary' : 'text-on-surface'}`}>{item.name}</p>
-                    <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tighter">{item.rarity} {item.type}</p>
+                    <p className={`text-xs font-bold leading-tight ${
+                       item.rarity === 'legendary' ? 'text-tertiary' :
+                       item.rarity === 'rare' ? 'text-primary' :
+                       'text-on-surface'
+                    }`}>{item.name}</p>
+                    <p className="text-[9px] mt-1 text-on-surface-variant uppercase font-black tracking-widest">{item.rarity}</p>
                   </div>
                 </div>
               </div>

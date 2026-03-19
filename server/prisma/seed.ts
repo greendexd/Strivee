@@ -1,17 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env' });
-
-// We must construct Prisma with the database URL explicitly here due to environment variable
-// resolution context sometimes failing when seeding directly via TSX from within the node_modules
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL || 'postgresql://thequest:password@localhost:5432/thequest?schema=public'
-    }
-  }
-});
+const prisma = new PrismaClient();
 
 const FIXED_USER_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -26,11 +15,13 @@ async function main() {
       id: FIXED_USER_ID,
       username: 'Alex',
       email: 'alex@example.com',
-      password: 'password123', // In a real app, hash this
+      password: 'password123',
       level: 24,
       xp: 850,
+      gold: 5000,
       gems: 500,
       fire: 7,
+      healthConnected: false,
       habits: {
         create: [
           {
@@ -76,9 +67,31 @@ async function main() {
       password: 'password123',
       level: 22,
       xp: 400,
+      gold: 200,
       gems: 200,
       fire: 30,
     },
+  });
+
+  // Add a shop item
+  await prisma.shopItem.create({
+    data: {
+      name: "Astral Vault",
+      description: "Rare Tier Loot Box",
+      type: "lootbox",
+      rarity: "rare",
+      priceGems: 150
+    }
+  });
+
+  await prisma.shopItem.create({
+    data: {
+      name: "Seeker's Crate",
+      description: "Common Tier Loot Box",
+      type: "lootbox",
+      rarity: "common",
+      priceGold: 2500
+    }
   });
 
   // Create an active duel between them
@@ -88,6 +101,7 @@ async function main() {
       opponentId: opponent.id,
       status: 'active',
       type: 'step_challenge',
+      currentTurnId: user.id
     }
   });
 

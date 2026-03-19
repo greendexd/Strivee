@@ -1,7 +1,14 @@
+import duelsRouter from './routes/duels.js';
+import friendsRouter from './routes/friends.js';
+import statsRouter from './routes/stats.js';
+import shopRouter from './routes/shop.js';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+
+// Import routers
+import usersRouter from './routes/users.js';
 
 dotenv.config();
 
@@ -19,32 +26,11 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'The Quest API is running smoothly' });
 });
 
-// --- USERS ---
-app.post('/api/users/register', async (req, res, next) => {
-  try {
-    const { username, email, password } = req.body;
-    // In a real app, hash password using bcrypt here
-    const user = await prisma.user.create({
-      data: { username, email, password },
-    });
-    res.status(201).json(user);
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get('/api/users/:id', async (req, res, next) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
-      include: { habits: true, inventory: true },
-    });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
-  } catch (error) {
-    next(error);
-  }
-});
+app.use('/api/users', usersRouter);
+app.use('/api/duels', duelsRouter);
+app.use('/api/friends', friendsRouter);
+app.use('/api/stats', statsRouter);
+app.use('/api/shop', shopRouter);
 
 // --- HABITS ---
 app.post('/api/habits', async (req, res, next) => {
@@ -65,47 +51,6 @@ app.get('/api/users/:userId/habits', async (req, res, next) => {
       where: { userId: req.params.userId },
     });
     res.json(habits);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// --- DUELS ---
-app.post('/api/duels', async (req, res, next) => {
-  try {
-    const { challengerId, opponentId, type } = req.body;
-    const duel = await prisma.duel.create({
-      data: { challengerId, opponentId, type, status: 'pending' },
-    });
-    res.status(201).json(duel);
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get('/api/users/:userId/duels', async (req, res, next) => {
-  try {
-    const { userId } = req.params;
-    const duels = await prisma.duel.findMany({
-      where: {
-        OR: [{ challengerId: userId }, { opponentId: userId }],
-      },
-      include: { challenger: true, opponent: true }
-    });
-    res.json(duels);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// --- INVENTORY / SHOP ---
-app.post('/api/inventory', async (req, res, next) => {
-  try {
-    const { name, type, rarity, userId } = req.body;
-    const item = await prisma.item.create({
-      data: { name, type, rarity, userId },
-    });
-    res.status(201).json(item);
   } catch (error) {
     next(error);
   }
