@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: the-quest-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      # React Router requires all paths to rewrite to index.html for client-side routing
+      - type: rewrite
+        source: /*
+        destination: /index.html
