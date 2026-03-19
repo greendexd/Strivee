@@ -1,4 +1,20 @@
+import { useUser } from '../context/UserContext';
+
 export default function Home() {
+  const { user, loading, error } = useUser();
+
+  if (loading) {
+    return <div className="p-8 text-center text-on-surface-variant animate-pulse">Loading habitat...</div>;
+  }
+
+  if (error) {
+    return <div className="p-8 text-center text-error">Failed to load: {error}</div>;
+  }
+
+  const stepHabit = user?.habits.find(h => h.type === 'step');
+  const sleepHabit = user?.habits.find(h => h.type === 'sleep');
+  const currentMission = sleepHabit || user?.habits[0];
+
   return (
     <main className="relative px-6 pt-4 pb-32 max-w-2xl mx-auto flex flex-col gap-8">
       {/* Hero Section: Habitat */}
@@ -63,7 +79,7 @@ export default function Home() {
             <div>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-black text-on-surface">4,500</span>
-                <span className="text-xs text-on-surface-variant">/ 10k</span>
+                <span className="text-xs text-on-surface-variant">/ {stepHabit ? Math.floor(stepHabit.goal/1000) + 'k' : '10k'}</span>
               </div>
               <div className="mt-3 w-full h-2 bg-surface-container-lowest rounded-full overflow-hidden">
                 <div className="h-full bg-secondary-dim shadow-[0_0_12px_rgba(43,232,0,0.5)] w-[45%]"></div>
@@ -81,7 +97,7 @@ export default function Home() {
             </div>
             <div className="py-1">
               <span className="block text-xl font-bold text-primary">Resting...</span>
-              <span className="text-xs text-on-surface-variant mt-1">Goal: 8h 30m</span>
+              <span className="text-xs text-on-surface-variant mt-1">Goal: {sleepHabit ? '8h' : '8h 30m'}</span>
             </div>
             <div className="flex -space-x-2">
               <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-[10px] text-primary">ZZ</div>
@@ -98,8 +114,12 @@ export default function Home() {
           <div className="flex justify-between items-center relative z-10">
             <div className="text-left">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-primary-fixed-variant">Current Mission 🎯</span>
-              <h3 className="text-xl font-headline font-extrabold text-on-primary-fixed mt-1">Slayer of the Blue Screen</h3>
-              <p className="text-sm text-on-primary-fixed-variant/80 font-medium mt-1">No phone 30 mins before bed (Good luck!)</p>
+              <h3 className="text-xl font-headline font-extrabold text-on-primary-fixed mt-1">
+                {currentMission ? currentMission.title : 'Slayer of the Blue Screen'}
+              </h3>
+              <p className="text-sm text-on-primary-fixed-variant/80 font-medium mt-1">
+                {currentMission ? currentMission.description : 'No phone 30 mins before bed'} (Good luck!)
+              </p>
             </div>
             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
               <span className="material-symbols-outlined text-on-primary-fixed text-2xl">arrow_forward_ios</span>

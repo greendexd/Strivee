@@ -1,11 +1,16 @@
+import { useUser } from '../context/UserContext';
+
 export default function Stats() {
+  const { user } = useUser();
+  const stepHabit = user?.habits.find(h => h.type === 'step');
+
   return (
-    <main className="px-6 pt-8 space-y-10 max-w-4xl mx-auto">
+    <main className="px-6 pt-8 space-y-10 max-w-4xl mx-auto pb-32">
       {/* Week at a Glance */}
       <section>
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-headline text-2xl font-extrabold tracking-tight">Week at a Glance</h2>
-          <span className="text-on-surface-variant text-sm font-label uppercase tracking-widest">Level 24 Ranger</span>
+          <span className="text-on-surface-variant text-sm font-label uppercase tracking-widest">Level {user?.level || 1} Ranger</span>
         </div>
         <div className="flex justify-between items-center overflow-x-auto pb-4 gap-4 no-scrollbar">
           {/* Day Node */}
@@ -70,7 +75,7 @@ export default function Stats() {
         <div className="flex items-end justify-between mb-8">
           <div>
             <h3 className="text-on-surface-variant uppercase text-xs font-bold tracking-[0.2em] mb-1">Step Mastery</h3>
-            <p className="text-3xl font-headline font-black text-on-surface">12,402 <span className="text-lg font-medium text-secondary">/ 10k</span></p>
+            <p className="text-3xl font-headline font-black text-on-surface">12,402 <span className="text-lg font-medium text-secondary">/ {stepHabit ? Math.floor(stepHabit.goal/1000) + 'k' : '10k'}</span></p>
           </div>
           <div className="flex gap-2">
             <button className="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant"><span className="material-symbols-outlined text-sm">chevron_left</span></button>
@@ -141,7 +146,7 @@ export default function Stats() {
                   <p className="text-xs text-on-surface-variant">Started Mar 12, 2024</p>
                 </div>
               </div>
-              <span className="text-2xl font-black font-headline">7</span>
+              <span className="text-2xl font-black font-headline">{stepHabit?.streak || user?.fire || 7}</span>
             </div>
 
             <div className="flex items-center justify-between p-4 bg-surface-container rounded-xl opacity-70">

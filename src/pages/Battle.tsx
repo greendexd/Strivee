@@ -1,6 +1,31 @@
+import { useState, useEffect } from 'react';
+import { useUser } from '../context/UserContext';
+import { DuelService, CURRENT_USER_ID } from '../services/api';
+import type { Duel } from '../services/api';
+
 export default function Battle() {
+  const { user } = useUser();
+  const [duels, setDuels] = useState<Duel[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDuels = async () => {
+      try {
+        const data = await DuelService.getUserDuels(CURRENT_USER_ID);
+        setDuels(data);
+      } catch (error) {
+        console.error('Failed to fetch duels:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDuels();
+  }, []);
+
+  const activeDuel = duels.find(d => d.status === 'active');
+
   return (
-    <main className="px-6 py-8 max-w-5xl mx-auto space-y-10">
+    <main className="px-6 py-8 max-w-5xl mx-auto space-y-10 pb-32">
       {/* Global Challenge Banner */}
       <section className="relative overflow-hidden rounded-lg min-h-[220px] flex items-end p-8 group">
         <div className="absolute inset-0 z-0">
@@ -42,69 +67,82 @@ export default function Battle() {
               <span className="material-symbols-outlined text-primary">swords</span>
               Active Duels
             </h3>
-            <span className="text-primary text-sm font-bold">1 Active</span>
+            <span className="text-primary text-sm font-bold">{duels.filter(d => d.status === 'active').length} Active</span>
           </div>
-          <div className="glass-card rounded-lg p-8 border border-outline-variant/15 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4">
-              <span className="bg-error/20 text-error text-[10px] font-black px-3 py-1 rounded-full flex items-center gap-1">
-                <span className="material-symbols-outlined text-[12px]">timer</span> 2 HOURS LEFT
-              </span>
-            </div>
-            <div className="flex flex-col md:flex-row items-center justify-around gap-8 py-4">
-              {/* User */}
-              <div className="text-center space-y-3">
-                <div className="w-24 h-24 rounded-full border-4 border-primary p-1 bg-surface-container-lowest relative mx-auto">
-                  <img
-                    className="w-full h-full rounded-full object-cover"
-                    data-alt="Heroic player avatar"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuClrZYiXnCPoIzGTn6N9aWaOb7gq5mTUjsK7s3eRqlHoDsInq8t80XURc5PNEdcuw6epxpd7BWB0oDPsHsZxNHO33Ot4_PweBQ_vWyX-xqoD1oCtkdhvUerwqYdzKGBHimEV-E0xGmCVvtwUH9vnOqRGKjLwfD_1nLaj8eEIkdV7fbRl6wqaBs7EtW0oukGYtM705486oBiGaw_PYgczQUCcB2raMdp1MiBpfbIB6cR82glp95VN6l5hp-W07CjjtbDan-GeTauojc"
-                  />
-                  <div className="absolute -top-2 -right-2 bg-primary text-on-primary-fixed text-xs font-black p-1.5 rounded-full shadow-lg">YOU</div>
-                </div>
-                <div>
-                  <p className="font-bold text-lg">Guardian</p>
-                  <p className="text-primary font-black text-2xl">8,420</p>
-                </div>
-              </div>
 
-              {/* VS Divider */}
-              <div className="flex flex-col items-center">
-                <div className="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center border-2 border-outline-variant/30 font-black italic text-on-surface-variant">VS</div>
-                <div className="h-16 w-0.5 bg-gradient-to-b from-transparent via-outline-variant/30 to-transparent my-2"></div>
-                <div className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">Step Challenge</div>
+          {loading ? (
+             <div className="glass-card rounded-lg p-8 text-center animate-pulse">Loading duels...</div>
+          ) : activeDuel ? (
+            <div className="glass-card rounded-lg p-8 border border-outline-variant/15 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4">
+                <span className="bg-error/20 text-error text-[10px] font-black px-3 py-1 rounded-full flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[12px]">timer</span> 2 HOURS LEFT
+                </span>
               </div>
+              <div className="flex flex-col md:flex-row items-center justify-around gap-8 py-4">
+                {/* User */}
+                <div className="text-center space-y-3">
+                  <div className="w-24 h-24 rounded-full border-4 border-primary p-1 bg-surface-container-lowest relative mx-auto">
+                    <img
+                      className="w-full h-full rounded-full object-cover"
+                      data-alt="Heroic player avatar"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuClrZYiXnCPoIzGTn6N9aWaOb7gq5mTUjsK7s3eRqlHoDsInq8t80XURc5PNEdcuw6epxpd7BWB0oDPsHsZxNHO33Ot4_PweBQ_vWyX-xqoD1oCtkdhvUerwqYdzKGBHimEV-E0xGmCVvtwUH9vnOqRGKjLwfD_1nLaj8eEIkdV7fbRl6wqaBs7EtW0oukGYtM705486oBiGaw_PYgczQUCcB2raMdp1MiBpfbIB6cR82glp95VN6l5hp-W07CjjtbDan-GeTauojc"
+                    />
+                    <div className="absolute -top-2 -right-2 bg-primary text-on-primary-fixed text-xs font-black p-1.5 rounded-full shadow-lg">YOU</div>
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg">{user?.username || 'Guardian'}</p>
+                    <p className="text-primary font-black text-2xl">{user?.xp || 0}</p>
+                  </div>
+                </div>
 
-              {/* Opponent */}
-              <div className="text-center space-y-3">
-                <div className="w-24 h-24 rounded-full border-4 border-on-surface-variant/30 p-1 bg-surface-container-lowest relative mx-auto">
-                  <img
-                    className="w-full h-full rounded-full object-cover"
-                    data-alt="Rival player avatar Alex"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCm4sIwoZDtiTURK7nlKAHCVGVR1k_rFaR29_enQhDijW-UcH4Egm3TGrBnktMS878c7mZNt74tNqKzICLVbqXU56vcVHot4lw-7g0EWWf95YxYFfbvLHSQHCVThjzUnVDrj_HRQ-IfP47nsAHidgkyf_saAf7X0KPdXbb1XlfLRtqD-wFqH8Q-SIfsB2PWcmQ86RiuCnVZ_z_lMwtTz_cpmslw08qr8C46y1xR-qHkjjqU6bIYVHcGXRpIAGiTb1WITXNcAdOQNB4"
-                  />
+                {/* VS Divider */}
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center border-2 border-outline-variant/30 font-black italic text-on-surface-variant">VS</div>
+                  <div className="h-16 w-0.5 bg-gradient-to-b from-transparent via-outline-variant/30 to-transparent my-2"></div>
+                  <div className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{activeDuel.type.replace('_', ' ')}</div>
                 </div>
-                <div>
-                  <p className="font-bold text-lg text-on-surface-variant">Alex</p>
-                  <p className="text-on-surface-variant font-black text-2xl">7,910</p>
+
+                {/* Opponent */}
+                <div className="text-center space-y-3">
+                  <div className="w-24 h-24 rounded-full border-4 border-on-surface-variant/30 p-1 bg-surface-container-lowest relative mx-auto">
+                    <img
+                      className="w-full h-full rounded-full object-cover"
+                      data-alt="Rival player avatar Alex"
+                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCm4sIwoZDtiTURK7nlKAHCVGVR1k_rFaR29_enQhDijW-UcH4Egm3TGrBnktMS878c7mZNt74tNqKzICLVbqXU56vcVHot4lw-7g0EWWf95YxYFfbvLHSQHCVThjzUnVDrj_HRQ-IfP47nsAHidgkyf_saAf7X0KPdXbb1XlfLRtqD-wFqH8Q-SIfsB2PWcmQ86RiuCnVZ_z_lMwtTz_cpmslw08qr8C46y1xR-qHkjjqU6bIYVHcGXRpIAGiTb1WITXNcAdOQNB4"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg text-on-surface-variant">
+                      {activeDuel.challengerId === user?.id ? activeDuel.opponent.username : activeDuel.challenger.username}
+                    </p>
+                    <p className="text-on-surface-variant font-black text-2xl">
+                      {activeDuel.challengerId === user?.id ? activeDuel.opponent.xp : activeDuel.challenger.xp}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="mt-8 pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-tertiary/20 to-tertiary/5 border border-tertiary/20 flex items-center justify-center shadow-lg">
-                  <span className="material-symbols-outlined text-tertiary text-3xl" data-weight="fill">inventory_2</span>
+              <div className="mt-8 pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-tertiary/20 to-tertiary/5 border border-tertiary/20 flex items-center justify-center shadow-lg">
+                    <span className="material-symbols-outlined text-tertiary text-3xl" data-weight="fill">inventory_2</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">PRIZE POOL</p>
+                    <p className="font-bold text-tertiary">Rare Loot Box</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">PRIZE POOL</p>
-                  <p className="font-bold text-tertiary">Rare Loot Box</p>
-                </div>
+                <button className="bg-gradient-to-br from-primary to-primary-dim text-on-primary-fixed font-black px-8 py-3 rounded-xl active:scale-95 transition-transform flex items-center gap-2 group shadow-lg">
+                  SYNC PROGRESS
+                  <span className="material-symbols-outlined group-hover:rotate-180 transition-transform duration-500">sync</span>
+                </button>
               </div>
-              <button className="bg-gradient-to-br from-primary to-primary-dim text-on-primary-fixed font-black px-8 py-3 rounded-xl active:scale-95 transition-transform flex items-center gap-2 group shadow-lg">
-                SYNC PROGRESS
-                <span className="material-symbols-outlined group-hover:rotate-180 transition-transform duration-500">sync</span>
-              </button>
             </div>
-          </div>
+          ) : (
+            <div className="glass-card rounded-lg p-8 text-center text-on-surface-variant">
+              No active duels found. Go find a challenger!
+            </div>
+          )}
 
           {/* Find Duel Button */}
           <div className="pt-4">

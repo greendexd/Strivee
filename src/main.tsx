@@ -1,13 +1,13 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import App from './App.tsx'
-import './index.css'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './index.css';
+import App from './App.tsx';
+import { UserProvider } from './context/UserContext.tsx';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <BrowserRouter>
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <UserProvider>
       <App />
-    </BrowserRouter>
-  </React.StrictMode>,
-)
+    </UserProvider>
+  </StrictMode>,
+);
