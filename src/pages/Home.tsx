@@ -10,7 +10,7 @@ export default function Home() {
         <div className="relative z-10 w-64 h-64 flex flex-col items-center justify-center">
           <img
             alt="Celestial Fox"
-            className="w-full h-full object-contain drop-shadow-[0_0_32px_rgba(202,152,255,0.4)]"
+            className="w-full h-full object-cover rounded-full drop-shadow-[0_0_32px_rgba(202,152,255,0.4)]"
             data-alt="A magical neon-glowing fox floating in space"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuC03Wv9WX346vmxfxyzySbjgdX8fz07B8zva6rFgoJ5YNgaDTZ4PFGEY3p8ze4ssPXCcBuYghSi2qV06vcyVzTf9tv5qX36-5wCii-rmVmUzAYWiXtw_LuIBBr4gtRWm6MEElOFzK8Akizl3Nv7A7_sqDBKboyRkj_7J28hsWwTRHmvVRxeq427SYzq6O6pBS95DJSucHbFhJaigHG09N5oHOk5cagDzpQmpym-srVg3Kqlx208SLmAXCITIn1GIh-GgXti9iQseks"
           />
@@ -25,7 +25,7 @@ export default function Home() {
         </div>
 
         {/* Floating Quick Actions */}
-        <div className="absolute top-1/4 right-0 flex flex-col gap-4">
+        <div className="absolute top-1/4 right-0 flex flex-col gap-4 z-20">
           <button className="group flex items-center gap-2 glass-card p-3 rounded-xl border border-tertiary/20 hover:scale-105 transition-all">
             <div className="w-10 h-10 rounded-lg signature-gradient flex items-center justify-center shadow-lg">
               <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
