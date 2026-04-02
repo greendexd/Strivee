@@ -3,27 +3,51 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
-  level     Int      @default(1)
-  xp        Int      @default(0)
-  gems      Int      @default(0)
-  fire      Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String    @id @default(uuid())
+  telegramId           String?   @unique
+  username             String    @unique
+  email                String?   @unique
+  password             String?
+  level                Int       @default(1)
+  xp                   Int       @default(0)
+  gold                 Int       @default(0)
+  gems                 Int       @default(0)
+  fire                 Int       @default(0)
+  lastLogin            DateTime  @default(now())
+  dailyRewardClaimedAt DateTime?
+  healthConnected      Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  habits    Habit[]
-  inventory Item[]
-  duelsAsChallenger Duel[] @relation("Challenger")
-  duelsAsOpponent   Duel[] @relation("Opponent")
-  socialEvents      SocialEvent[]
+  habits               Habit[]
+  inventory            InventoryItem[]
+
+  duelsAsChallenger    Duel[] @relation("Challenger")
+  duelsAsOpponent      Duel[] @relation("Opponent")
+
+  sentFriendRequests   Friendship[] @relation("Requester")
+  receivedFriendRequests Friendship[] @relation("Receiver")
+
+  socialEvents         SocialEvent[]
+}
+
+model Friendship {
+  id          String   @id @default(uuid())
+  requesterId String
+  receiverId  String
+  status      String   // "pending", "accepted", "declined"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester   User     @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver    User     @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId])
 }
 
 model Habit {
@@ -40,26 +64,48 @@ model Habit {
 }
 
 model Duel {
-  id           String   @id @default(uuid())
-  challengerId String
-  opponentId   String
-  status       String   // e.g., "pending", "active", "completed"
-  type         String   // e.g., "step_challenge"
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(uuid())
+  challengerId  String
+  opponentId    String
+  status        String   // "searching", "pending", "active", "finished", "declined"
+  type          String   // "quick_duel", "friend_duel", etc.
 
-  challenger User @relation("Challenger", fields: [challengerId], references: [id])
-  opponent   User @relation("Opponent", fields: [opponentId], references: [id])
+  challengerHp  Int      @default(100)
+  opponentHp    Int      @default(100)
+  currentTurnId String?
+  winnerId      String?
+  battleLogs    String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  challenger    User     @relation("Challenger", fields: [challengerId], references: [id])
+  opponent      User     @relation("Opponent", fields: [opponentId], references: [id])
 }
 
-model Item {
-  id        String   @id @default(uuid())
-  name      String
-  type      String   // e.g., "skin", "utility", "lootbox"
-  rarity    String   // e.g., "common", "rare", "legendary"
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+model ShopItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  type        String   // "skin", "utility", "lootbox"
+  rarity      String   // "common", "rare", "legendary"
+  priceGold   Int      @default(0)
+  priceGems   Int      @default(0)
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+}
+
+model InventoryItem {
+  id          String   @id @default(uuid())
+  userId      String
+  shopItemId  String?
+  name        String
+  type        String
+  rarity      String
+  equipped    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model SocialEvent {
